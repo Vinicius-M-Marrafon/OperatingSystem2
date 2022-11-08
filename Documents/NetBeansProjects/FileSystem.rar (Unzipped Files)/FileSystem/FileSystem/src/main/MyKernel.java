@@ -13,9 +13,13 @@ import operatingSystem.Kernel;
  * @author Vinicius Mari Marrafon
  */
 
+import main.Exceptions.PathNotFoundException;
+
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.text.*;
+import java.io.*;
 
 
 public class MyKernel implements Kernel {
@@ -70,98 +74,117 @@ public class MyKernel implements Kernel {
         Matcher matcher = pattern.matcher(str);
         return matcher.find();
     }
+   
     
-    // Função utilizada para "setar" um caractere em uma posição especifica na string
-    private String reSet(String str, char c, int pos)
-    {
-        char array[] = str.toCharArray();
-        array[pos] = c;
-        return new String(array);
+    private boolean isFather(String dirName, String chil) {
+        System.out.println(dirName + " -> " + chil + " ?");
+        return chil.contains(dirName);
     }
     
-    private void setPermission(Node start, String u, String g, String a, boolean recursive)
+    private String setPermission(Node source, int u, int g, int a, String fileName)
     {
-        for (int i = 0; i < 3; i++)
-        {
-            switch (i) {
-                case 0:
-                    // System.out.println(chmodU.charAt(i));
-                    if (u.charAt(i) == '1') start.u = reSet(start.u, 'r', i);
-                    else  start.u = reSet(start.u, '-', i);
-                    if (g.charAt(i) == '1') start.g = reSet(start.g, 'r', i);
-                    else  start.g = reSet(start.g, '-', i);
-                    if (a.charAt(i) == '1') start.a = reSet(start.a, 'r', i);
-                    else  start.a = reSet(start.a, '-', i);
-                    break;
-                case 1:
-                    // System.out.println(chmodU.charAt(i));
-                    if (u.charAt(i) == '1') start.u = reSet(start.u, 'w', i);
-                    else  start.u = reSet(start.u, '-', i);
-                    if (g.charAt(i) == '1') start.g = reSet(start.g, 'w', i);
-                    else  start.g = reSet(start.g, '-', i);
-                    if (a.charAt(i) == '1') start.a = reSet(start.a, 'w', i);
-                    else  start.a = reSet(start.a, '-', i);
-                    break;
-                case 2:
-                    //System.out.println(chmodU.charAt(i));
-                    if (u.charAt(i) == '1') start.u = reSet(start.u, 'x', i);
-                    else  start.u = reSet(start.u, '-', i);
-                    if (g.charAt(i) == '1') start.g = reSet(start.g, 'x', i);
-                    else  start.g = reSet(start.g, '-', i);
-                    if (a.charAt(i) == '1') start.a = reSet(start.a, 'x', i);
-                    else  start.a = reSet(start.a, '-', i);
-                    break;
-                default:
-                    break;
-            }
+        // OK!
+        myFile target = source.files.get(fileName);
+        
+        try {
+            target.a = a;
+            target.u = u;
+            target.g = g;
         }
-         
-         if (recursive) {
-            for (Map.Entry<String, Node> set : start.dirs.entrySet()) {
-                if (!(set.getKey().equals(".") || set.getKey().equals("..")))
+        catch (NullPointerException ex) {
+            return "File do not exist!";
+        }
+        
+        return "chmod: Success";
+    }
+    
+    private void setPermission(Node source, int u, int g, int a, boolean recursive)
+    {
+        source.a = a;
+        source.u = u;
+        source.g = g;
+        
+        if (recursive) {
+            for (Map.Entry<String, Node> set : source.dirs.entrySet()) {
+                if (!(set.getKey().equals(".") || set.getKey().equals(".."))) {
                     this.setPermission(set.getValue(), u, g, a, recursive);
+                }
             }
-         }
-    }
-    
-    private void setPermission(Node start, String u, String g, String a, String fileName)
-    {
-        System.out.println("Changing: " + fileName);
-        File target = start.files.get(fileName);
-        for (int i = 0; i < 3; i++)
-        {
-            switch (i) {
-                case 0:
-                    // System.out.println(chmodU.charAt(i));
-                    if (u.charAt(i) == '1') target.u = reSet(target.u, 'r', i);
-                    else  target.u = reSet(target.u, '-', i);
-                    if (g.charAt(i) == '1') target.g = reSet(target.g, 'r', i);
-                    else  target.g = reSet(target.g, '-', i);
-                    if (a.charAt(i) == '1') target.a = reSet(target.a, 'r', i);
-                    else  target.a = reSet(target.a, '-', i);
-                    break;
-                case 1:
-                    // System.out.println(chmodU.charAt(i));
-                    if (u.charAt(i) == '1') target.u = reSet(target.u, 'w', i);
-                    else  target.u = reSet(target.u, '-', i);
-                    if (g.charAt(i) == '1') target.g = reSet(target.g, 'w', i);
-                    else  target.g = reSet(target.g, '-', i);
-                    if (a.charAt(i) == '1') target.a = reSet(target.a, 'w', i);
-                    else  target.a = reSet(target.a, '-', i);
-                    break;
-                case 2:
-                    //System.out.println(chmodU.charAt(i));
-                    if (u.charAt(i) == '1') target.u = reSet(target.u, 'x', i);
-                    else  target.u = reSet(target.u, '-', i);
-                    if (g.charAt(i) == '1') target.g = reSet(target.g, 'x', i);
-                    else  target.g = reSet(target.g, '-', i);
-                    if (a.charAt(i) == '1') target.a = reSet(target.a, 'x', i);
-                    else  target.a = reSet(target.a, '-', i);
-                    break;
-                default:
-                    break;
+            
+            for (Map.Entry<String, myFile> set : source.files.entrySet()) {
+                this.setPermission(source, u, g, a, set.getValue().getName());
             }
         }
+    }
+    
+    // Retorna o ponteiro para o nó da árvore de diretorios
+    // Ou retorna o diretorio de um arquivo especificado
+    private Node getPathByName(String path, int until) throws PathNotFoundException
+    {
+        String s[] = this.countChar(path, '/', true);
+        int steps = s.length;
+        int start = 0;
+        
+        Node destiny;
+        if (s[0].equals("")) {
+            destiny = home;
+            start++;
+        }
+        else {
+            destiny = pwd;
+        }
+        
+        for (int i = start; i < steps - until; i++)
+        {
+            if (destiny.dirs.get(s[i]) == null)
+                throw new PathNotFoundException("cd : Cannot find path \'"+path+"\' because it does not exist.");
+            
+            destiny = destiny.dirs.get(s[i]);
+            // System.out.println("New step: " + destiny.path);
+        }
+        return destiny;
+    }
+    
+    private void updatePath(Node source) {
+        // Para cada filho de source
+        
+        for (Map.Entry<String, Node> n : source.dirs.entrySet()) {
+            if (!(n.getKey().equals(".") || n.getKey().equals(".."))) {
+                n.getValue().path = source.path + "/" + n.getValue().name;
+                this.updatePath(n.getValue());
+            }
+        }
+    }
+    
+    private String dfsStore(String f, Node u) {
+        // Começa pelo root
+        String store = "";
+        String currentPath = u.path;
+        if (u != home) store = "mkdir " + u.path + "\n";
+        if (!u.getPermissions().equals("drwxrwxrwx")) {
+            String value = u.getU()+""+u.getG()+""+u.getA();
+            store += "chmod " + value + " " + currentPath;
+        }
+        
+        for (Map.Entry<String, Node> set : u.dirs.entrySet())
+        {
+            if (!(set.getKey().equals("..") || set.getKey().equals(".")))
+            {
+                // System.out.println("Key: " + set.getValue().path);
+                store += this.dfsStore(f, set.getValue());
+            }
+        }
+        
+        for (Map.Entry<String, myFile> set : u.files.entrySet())
+        {
+            if (!(set.getKey().equals("..") || set.getKey().equals(".")))
+            {
+                // System.out.println("Key: " + set.getValue().path);
+                store += "createfile " + currentPath + "/" + u.files.get(set.getKey()).getName() + " " + u.files.get(set.getKey()).getContent()+ "\n";
+            }
+        }
+        
+        return store;
     }
             
     // Retorna o nome do diretório que o usuário esta!
@@ -169,6 +192,9 @@ public class MyKernel implements Kernel {
         return "Where am I: " + pwd.path;
     }
     
+    @Override public String sudo() {
+        return null;
+    }
     // OK!
     @Override public String ls(String parameters) {
         //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
@@ -187,28 +213,12 @@ public class MyKernel implements Kernel {
                    per = true;
                }
                else {
-                    String path[] = this.countChar(args[0], '/', true);
-                    int steps = path.length;
-                    int s = 0;
-
-                    // Caminho absoluto?
-                    if (path[0].equals("")) {
-                        walker = home;
-                        s++;
-                    }
-                    else {
-                        walker = pwd;
-                    }
-
-                    for (int i = s; i < steps; i++)
-                    {
-                        if (walker.dirs.get(path[i]) == null) {
-                            return "Cannot find path specified!";
-                        }
-
-                        // Go ahead then
-                        walker = walker.dirs.get(path[i]);
-                    }
+                    try {
+                    walker = this.getPathByName(args[0], 0);
+                }
+                catch (PathNotFoundException ex) {
+                    return ex.getMessage();
+                }
                 }
             }
             else if (argc == 2) {
@@ -218,28 +228,12 @@ public class MyKernel implements Kernel {
                 else {
                     return "ls: Invalid flag for ls " + args[0] + ", try \"-l\"";
                 }
-
-                String path[] = this.countChar(args[1], '/', true);
-                int steps = path.length;
-                int s = 0;
-
-                // Caminho absoluto?
-                if (path[0].equals("")) {
-                    walker = home;
-                    s++;
+                
+                try {
+                    walker = this.getPathByName(args[1], 0);
                 }
-                else {
-                    walker = pwd;
-                }
-
-                for (int i = s; i < steps; i++)
-                {
-                    if (walker.dirs.get(path[i]) == null) {
-                        return "Cannot find path specified!";
-                    }
-
-                    // Go ahead then
-                    walker = walker.dirs.get(path[i]);
+                catch (PathNotFoundException ex) {
+                    return ex.getMessage();
                 }
             }
             else {
@@ -250,17 +244,18 @@ public class MyKernel implements Kernel {
             walker = pwd;
         }
         
-        if (!walker.u.contains("r")) {
-            return "Access denied!";
+        // Tem perimissao?
+        if (walker.getU() < 4 || walker.getA() < 4 || walker.getG() < 4) {
+            return "ls: Can't list! Access Denied. Are you root?";
         }
         
         result += "ls: directory " + walker.path + "\n";
         for (Map.Entry<String, Node> set : walker.dirs.entrySet()) {
-            result += "\t"+ (per? set.getValue().getPermissions() + "\t\t": " ") + set.getKey() + "\n";
+            result += (per? set.getValue().getPermissions()+'\t'+set.getValue().getDate() + "\t": " ") + set.getKey() + "\n";
         }
         
-        for (Map.Entry<String, File> set : walker.files.entrySet()) {
-            result += "\t"+ (per? set.getValue().getPermissions() + "\t\t": " ") + set.getKey() + "\n";
+        for (Map.Entry<String, myFile> set : walker.files.entrySet()) {
+            result += (per? set.getValue().getPermissions()+'\t'+set.getValue().getDate() + "\t": " ") + set.getKey() + "\n";
         }
         
         //fim da implementacao do aluno
@@ -285,24 +280,22 @@ public class MyKernel implements Kernel {
 
             // Consider that the path is absolute by default
             Node walker;
-            if (token[0].equals("")) {
-                walker = home;
-                start++;
+            try {
+                walker = this.getPathByName(parameters, 1);
             }
-            else {
-                walker = pwd;
+            catch (PathNotFoundException ex) {
+                return ex.getMessage();
             }
             
-            for (int i = start; i < num - 1; i++)
-            {
-                if (walker.dirs.get(token[i]) == null) {
-                    return "The system cannot find the path specified.";
-                }
-
-                // Go ahead then
-                walker = walker.dirs.get(token[i]);
+            String chmodU = String.format("%3s", Integer.toBinaryString(walker.getU())).replace(' ', '0');
+            String chmodG = String.format("%3s", Integer.toBinaryString(walker.getG())).replace(' ', '0');
+            String chmodA = String.format("%3s", Integer.toBinaryString(walker.getA())).replace(' ', '0');
+        
+            // Tem perimissao?
+            if (chmodU.charAt(1) == '0' || chmodG.charAt(1) == '0' || chmodA.charAt(1) == '0') {
+                return "mkdir: Can't write in this directory! Access Denied. Are you root?";
             }
-
+        
             Node newDir;
             // restricoes para criar um diretorio
             if (ok("[ <>\"\'?:~|\\/!@#$%¨&*]", token[num-1]) || walker.dirs.get(token[num-1]) != null)
@@ -329,50 +322,18 @@ public class MyKernel implements Kernel {
         }
         
         String result = "";
-        // System.out.println("Chamada de Sistema: cd");
-        // System.out.println("\tParametros: " + parameters);
-
-        //inicio da implementacao do aluno
-        
-        String[] token = this.countChar(parameters, '/', true);
-        int num = token.length;
-        int start = 0;
-        // System.out.println("Token: " + token[0] + "(" + num + ")");
-        
-        // Checar se o caminho eh absoluto
-        
-        Node walker;
-        if (token[0].equals("")) {
-            walker = home;
-            start++;
+        try {
+            pwd = this.getPathByName(parameters, 0);
         }
-        else {
-            walker = pwd;
+        catch (PathNotFoundException ex) {
+            return ex.getMessage();
         }
         
-        for (int i = start; i < num; i++)
-        {
-            if (walker.dirs.get(token[i]) == null) {
-                return "The system cannot find the path specified.";
-            }
-
-            // Go ahead then
-            walker = walker.dirs.get(token[i]);
-        }
-
-        pwd = walker;
-        
-        //System.out.println("Your Dir now: " + pwd.name);
-
-        //setando parte gráfica do diretorio atual
         operatingSystem.fileSystem.FileSytemSimulator.currentDir = pwd.path;
-    
-
-        //fim da implementacao do aluno
         return result;
     }
 
-    // rmdir = Remove Diretórios VAZIOS!
+    // Em manutenção
     @Override public String rmdir(String parameters) {
         //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
         String result = "";
@@ -389,34 +350,18 @@ public class MyKernel implements Kernel {
         {
             String[] token = this.countChar(parameters, '/', true);
             int num = token.length;
-
-            // Ignorar todos os /
-            // System.out.println("Token: " + token[0]);
             
-            // Considerar que o caminho é absoluto por padrão
-            boolean isAbs = true;
-            
-            // Checar se o caminho é relativo
-            if (pwd.dirs.get(token[0]) != null || num == 1) {
-                isAbs = false;
+            Node walker;
+            try {
+                walker = this.getPathByName(parameters, 0);
             }
-            
-            //System.out.println("Creating directory: " + token[num]);
-
-            Node walker = isAbs? home : pwd;
-            for (int i = 0; i < num; i++)
-            {
-                if (walker.dirs.get(token[i]) == null) {
-                    return "The system cannot find the file specified.";
-                }
-
-                // Prosseguir
-                walker = walker.dirs.get(token[i]);
+            catch (PathNotFoundException ex) {
+                return ex.getMessage();
             }
             
             // System.out.println("Walker info\nSize Dir: " + walker.dirs.size() + "\nSize Files: " + walker.files.size());
             // Checar se walker esta vazio
-            if (walker.name.equals(pwd.name)) {
+            if (walker == pwd) {
                 result = "Your current directory cannot be removed!";
             }
             else if (walker.dirs.size() == 2 && walker.files.isEmpty()) {
@@ -468,70 +413,29 @@ public class MyKernel implements Kernel {
         
         Node source, destiny;
         
-        // Checar origem
-        if (arg1[0].equals("")) {
-            source = home;
-            s1++;
-            start++;
+        try {
+            source = this.getPathByName(args[start], 0);
+            destiny = this.getPathByName(args[start + 1], 0);
         }
-        else {
-            source = pwd;
+        catch (PathNotFoundException ex) {
+            return ex.getMessage();
         }
         
-        // Checar destino
-        if (arg2[0].equals("")) {
-            destiny = home;
-            s2++;
-            start++;
-        }
-        else {
-            destiny = pwd;
+        if (dirCp && (source == destiny.father)) {
+            return "Can't copy";
         }
         
-        // Podemos ter arquivos misturado com diretorios (Tratar)
-        for (int i = s1; i < n1; i++)
-        {
-            if (!dirCp && arg1[i].contains(".txt")) {
-                f1 = true;
-            }
-            else if (source.dirs.get(arg1[i]) == null) {
-                return arg1[i] + ": The system cannot find the path specified.";
-            }
-
-            // Go ahead then
-            if (!f1) source = source.dirs.get(arg1[i]);
-        }
-        
-        for (int i = s2; i < n2; i++)
-        {
-            if (!dirCp && arg2[i].contains(".txt")) {
-                f2 = true;
-            }
-            else if (destiny.dirs.get(arg2[i]) == null) {
-                return arg2[i] + ": The system cannot find the path specified.";
-            }
-
-            // Go ahead then
-            if (!f2) destiny = destiny.dirs.get(arg2[i]);
-        }
-        
-        if (dirCp && (source.name.equals(".") || source.name.equals("..") || source.name.equals("/"))) {
-            return "Can't copy \'.\' and \'..\' directory!";
-        }
-        
-        // Copiar os arquivos/ diretorios (nome destino pode ser alterado)
         if (dirCp) {
             // System.out.println("Destiny's name " + destiny.name);
             Node cpDir = source.copyNode(destiny);
             destiny.dirs.put(arg1[n1 - 1], cpDir);
+            destiny.dirs.put(".", destiny);
         }
-        
-        // copia de arquivo
         else {
             if (source.files.get(arg1[n1-1]) != null) {
                 System.out.println("File to copy: " + arg1[n1-1]);
-                File target = source.files.get(arg1[n1-1]);
-                File cpFile = target.copyFile(target);
+                myFile target = source.files.get(arg1[n1-1]);
+                myFile cpFile = target.copyFile(target);
                 
                 String destinyFileName;
                 if (f2) {
@@ -553,20 +457,16 @@ public class MyKernel implements Kernel {
         return result;
     }
 
-    // Pode ser um arquivo ou um diretorio
-    // Nao ha especificacao de diretorio com a flag -r
-    @Override public String mv(String parameters){
-        //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
+    @Override public String mv(String parameters)
+    {
         String result = "";
-        // System.out.println("Chamada de Sistema: mv");
-        // System.out.println("\tParametros: " + parameters);)
         //inicio da implementacao do aluno
         // Ir até o arquivo de origem e destino
         
         String[] args = this.countChar(parameters, ' ', true);
         int argc = args.length;
         int s1 = 0, s2 = 0;
-        boolean f1 = false, f2 = false;
+        boolean f1 = false, f2 = false, rename = false;
         
         if (argc != 2) {
             return "The syntax of the command is incorrect.";
@@ -578,6 +478,7 @@ public class MyKernel implements Kernel {
         int n2 = arg2.length;
         
         Node source, destiny;
+        String renameDir = "";
         
         // Checar origem
         if (arg1[0].equals("")) {
@@ -611,8 +512,10 @@ public class MyKernel implements Kernel {
             if (!f1) source = source.dirs.get(arg1[i]);
         }
         
+        // O nome do diretorio pode ser alterado no move
         for (int i = s2; i < n2; i++)
         {
+            renameDir = arg2[i];
             if (arg2[i].equals(source.name)) {
                 return arg2[i] + ": Can't move it!";
             }
@@ -620,34 +523,37 @@ public class MyKernel implements Kernel {
             if (arg2[i].contains(".txt")) {
                 f2 = true;
             }
+            else if (destiny.dirs.get(arg2[i]) == null && i == n2 - 1 && !f1) {
+                renameDir = arg2[i];
+                rename = true;
+            }
             else if (destiny.dirs.get(arg2[i]) == null) {
                 return arg2[i] + ": The system cannot find the path specified.";
             }
 
             // Go ahead then
-            if (!f2) destiny = destiny.dirs.get(arg2[i]);
+            if (!f2 && !rename) destiny = destiny.dirs.get(arg2[i]);
         }
         
-        if (!f1 && (source.name.equals(".") || source.name.equals("..") || source.name.equals("/"))) {
-            return "Can't move \'.\' or \'..\' directory!";
+        System.out.println("new dir name: " + renameDir);
+        // Arrumar (. ..) | (.. .)
+        if (!f1 && (source == destiny.father || source == pwd)) {
+            return "Can't move";
         }
         
-        // Mudar a referencia
-        // Verificar se o usuario quer mover um diretorio
-        // Tera que alterar todos os paths dos filhos do diretorio copiado
-        if (!f1) {
-            // Simplesmente mude o pai
-            System.out.println("Source Father's name: " + source.father.name);
-            
+        if (!f1) // Mover um diretorio
+        {
             source.father.dirs.remove(arg1[n1-1]);
             source.dirs.put("..", destiny);
             source.dirs.put(".", source);
             source.path = source.path.replaceFirst("/", "");
-            source.path = destiny.path + source.path;
-            destiny.dirs.put(arg1[n1-1], source);
+            source.path = destiny.path + "/" + (rename? renameDir : source.name);
+            this.updatePath(source);
+            destiny.dirs.put((rename? renameDir : arg1[n1-1]), source);
+            
         }
-        // Verificar se o usuario quer mover um arquivo
-        else { // OK!
+        else // Mover um arquivo
+        {
             String destinyFileName;
             if (f2) {
                 if (!arg2[n2-1].contains(".txt")) {
@@ -666,14 +572,9 @@ public class MyKernel implements Kernel {
         return result;
     }
 
-    // Precisa especificar a flag -R para especificar a exclusão de um diretorio
-    // Caso o usuário queira remover um diretório sem especificar -R, o comando
-    // NÃO DEVERÁ REMOVE-LO!
+    // rm -r ../.
     @Override public String rm(String parameters) {
-        //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
         String result = "";
-        // System.out.println("Chamada de Sistema: rm");
-        // System.out.println("\tParametros: " + parameters);
 
         //inicio da implementacao do aluno
         // Hah algum parametro?
@@ -692,26 +593,14 @@ public class MyKernel implements Kernel {
             int s = 0;
 
             Node walker;
-            // Caminho absoluto?
-            if (path[0].equals("")) {
-                walker = home;
-                s++;
+            
+            try {
+                walker = this.getPathByName(args[0], 1);
             }
-            else {
-                walker = pwd;
-            }
-
-            for (int i = s; i < steps - 1; i++)
-            {
-                if (walker.dirs.get(path[i]) == null) {
-                    return "Cannot find path specified!";
-                }
-
-                // Go ahead then
-                walker = walker.dirs.get(path[i]);
+            catch (PathNotFoundException ex) {
+                return ex.getMessage();
             }
             
-            System.out.println("args: " + path[steps-1]);
             if (walker.files.get(path[steps-1]) != null) {
                 walker.files.remove(path[steps-1]);
             }
@@ -728,25 +617,19 @@ public class MyKernel implements Kernel {
                 int s = 0;
 
                 Node walker;
-                // Caminho absoluto?
-                if (path[0].equals("")) {
-                    walker = home;
-                    s++;
+                try {
+                    walker = this.getPathByName(args[1], 1);
                 }
-                else {
-                    walker = pwd;
-                }
-
-                for (int i = s; i < steps - 1; i++)
-                {
-                    if (walker.dirs.get(path[i]) == null) {
-                        return "Cannot find path specified!";
-                    }
-
-                    // Go ahead then
-                    walker = walker.dirs.get(path[i]);
+                catch (PathNotFoundException ex) {
+                    return ex.getMessage();
                 }
                 
+                // Verificar se target eh um pai de pwd
+                
+                String target = path[steps-1];
+                if (this.isFather(target, pwd.path) || target.equals(".") || target.equals("..")){
+                    return "rm: refusing to remove \'.\' or \'..\' directory: skipping " + args[1];
+                }
                 // Remover o diretorio
                 if (walker.dirs.get(path[steps-1]) != null) {
                     walker.dirs.remove(path[steps-1]);
@@ -772,6 +655,7 @@ public class MyKernel implements Kernel {
         //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
         String result = "";
 
+        System.out.println("parametro chmod => " + parameters);
         if (parameters.equals("")) {
             return "The syntax of the command is incorrect.";
         }
@@ -826,7 +710,6 @@ public class MyKernel implements Kernel {
                     return "The system cannot find the path specified.";
                 }
                 
-
                 // Go ahead then
                 if (!fileChmod) walker = walker.dirs.get(token[i]);
             }
@@ -854,22 +737,12 @@ public class MyKernel implements Kernel {
                 return "The syntax of the command is incorrect.";
             }
             
-            // Get the binary representation of it
-            String chmodU = String.format("%3s", Integer.toBinaryString(x)).replace(' ', '0');
-            String chmodG = String.format("%3s", Integer.toBinaryString(y)).replace(' ', '0');
-            String chmodA = String.format("%3s", Integer.toBinaryString(z)).replace(' ', '0');
-
-//            System.out.println(chmodU);
-//            System.out.println(chmodG);
-//            System.out.println(chmodA);
-
             // Mudar a permissao
             if (fileChmod) {
-                System.out.println("FileChmod");
-                this.setPermission(walker, chmodU, chmodG, chmodA, token[num - 1]);
+                result = this.setPermission(walker, x, y, z, token[num - 1]);
             }
             else
-                this.setPermission(walker, chmodU, chmodG, chmodA, recursive);
+                this.setPermission(walker, x, y, z, recursive);
         }
         
         //inicio da implementacao do aluno
@@ -881,7 +754,6 @@ public class MyKernel implements Kernel {
     @Override public String createfile(String parameters) {
         //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
         String result = "";
-        System.out.println("\tParametros: " + parameters);
 
         //inicio da implementacao do aluno
       
@@ -902,21 +774,11 @@ public class MyKernel implements Kernel {
         // Consider that the path is absolute by default
 
         Node walker;
-        if (token[0].equals("")) {
-            walker = home;
-            s++;
-        } else {
-            walker = pwd;
+        try {
+            walker = this.getPathByName(str[0], 1);
         }
-        
-        for (int i = s; i < num - 1; i++)
-        {
-            if (walker.dirs.get(token[i]) == null) {
-                return "Cannot find path specified!";
-            }
-
-            // Go ahead then
-            walker = walker.dirs.get(token[i]);
+        catch (PathNotFoundException ex) {
+            return ex.getMessage();
         }
         
         if (ok("[ <>\"\'?:~|\\/!@#$%¨&*]", token[num-1])) {
@@ -928,8 +790,8 @@ public class MyKernel implements Kernel {
             token[num - 1] += ".txt";
         }
         
-        File newFile;
-        newFile = new File(token[num - 1], str.length == 2? str[1] : "");
+        myFile newFile;
+        newFile = new myFile(token[num - 1], str.length == 2? str[1] : "");
         
         
         walker.files.put(newFile.getName(), newFile);
@@ -950,29 +812,24 @@ public class MyKernel implements Kernel {
 
         // Consider that the path is absolute by default
         Node walker;
-        if (token[0].equals("")) {
-            walker = home;
-            start++;
+        
+        try {
+           walker = this.getPathByName(parameters, 1);
         }
-        else {
-            walker = pwd;
+        catch (PathNotFoundException ex) {
+            return ex.getMessage();
         }
-
-        for (int i = start; i < num - 1; i++)
-        {
-            if (walker.dirs.get(token[i]) == null) {
-                return "The system cannot find the path specified.";
-            }
-
-            // Go ahead then
-            walker = walker.dirs.get(token[i]);
-        }
+        
         //fim da implementacao do aluno
         if (walker.files.get(token[num-1]) == null) {
             result += "The system cannot find the file specified.";
         }
         else {
-            result += walker.files.get(token[num-1]).getContent();
+            String[] content = walker.files.get(token[num -1]).getContent().split("\\\\n");
+            for (String line : content) {
+                result += line + "\n";
+            }
+            // result += walker.files.get(token[num-1]).getContent();
         }
         return result;
     }
@@ -980,10 +837,48 @@ public class MyKernel implements Kernel {
     @Override public String batch(String parameters) {
         //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
         String result = "";
-        System.out.println("Chamada de Sistema: batch");
-        System.out.println("\tParametros: " + parameters);
 
+        
         //inicio da implementacao do aluno
+        try {
+            File load = new File(parameters);
+            Scanner fileReader = new Scanner(load);
+            
+            while (fileReader.hasNextLine()) {
+                String line = fileReader.nextLine();
+                String command = line.split(" ", 2)[0];
+                String args = line.split(" ", 2)[1];
+                
+                if (command.equals("mkdir"))
+                    mkdir(args);
+                
+                else if (command.equals("chmod"))
+                    chmod(args);
+                
+                else if (command.equals("createfile"))
+                    createfile(args);
+                
+                else if (command.equals("rmdir"))
+                    rmdir(args);
+                
+                else if (command.equals("rm"))
+                    rm(args);
+                
+                else if (command.equals("cd"))
+                    cd(args);
+                
+                else if (command.equals("cp"))
+                    cp(args);
+                
+                else if (command.equals("mv"))
+                    mv(args);
+            }
+            
+            fileReader.close();
+        }
+        catch (FileNotFoundException ex) {
+            result = "batch: Couldn't load file";
+        }
         //fim da implementacao do aluno
         return result;
     }
@@ -991,10 +886,19 @@ public class MyKernel implements Kernel {
     @Override public String dump(String parameters) {
         //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
         String result = "";
-        System.out.println("Chamada de Sistema: dump");
-        System.out.println("\tParametros: " + parameters);
 
         //inicio da implementacao do aluno
+        String content = "";
+        FileWriter source;
+        try {
+            source = new FileWriter(parameters);
+            content = dfsStore(content, home);
+            System.out.println("Content: " + content);
+            source.write(content);
+            source.close();
+        } catch (IOException ex) {
+            result = "Error to open file";
+        }
         //fim da implementacao do aluno
         return result;
     }
@@ -1008,7 +912,7 @@ public class MyKernel implements Kernel {
         //numero de matricula
         String registration = "202011020023";
         //versao do sistema de arquivos
-        String version = "1.0";
+        String version = "2.0 (0 k[m])";
 
         result += "Nome do Aluno:        " + name;
         result += "\nMatricula do Aluno:   " + registration;
