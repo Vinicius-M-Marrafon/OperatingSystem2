@@ -18,7 +18,6 @@ import main.Exceptions.PathNotFoundException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.text.*;
 import java.io.*;
 
 
@@ -76,8 +75,11 @@ public class MyKernel implements Kernel {
     }
    
     
+    // TODO
+    // private String makePath();
+    
+    // Usa o Path
     private boolean isFather(String dirName, String chil) {
-        System.out.println(dirName + " -> " + chil + " ?");
         return chil.contains(dirName);
     }
     
@@ -119,12 +121,14 @@ public class MyKernel implements Kernel {
     
     // Retorna o ponteiro para o nó da árvore de diretorios
     // Ou retorna o diretorio de um arquivo especificado
-    private Node getPathByName(String path, int until) throws PathNotFoundException
+    private Pair<Node, String> getNodeByPath(String path, int until, boolean rename) throws PathNotFoundException
     {
         String s[] = this.countChar(path, '/', true);
         int steps = s.length;
         int start = 0;
+        boolean renamed = false;
         
+        String newName = "";
         Node destiny;
         if (s[0].equals("")) {
             destiny = home;
@@ -136,18 +140,25 @@ public class MyKernel implements Kernel {
         
         for (int i = start; i < steps - until; i++)
         {
+            newName = s[i];
             if (destiny.dirs.get(s[i]) == null)
-                throw new PathNotFoundException("cd : Cannot find path \'"+path+"\' because it does not exist.");
+                if (!rename || i < steps - until - 1)
+                    throw new PathNotFoundException("cd : Cannot find path \'"+path+"\' because it does not exist.");
+                else {
+                    renamed = true;
+                    newName = s[i];
+                }
+                    
             
-            destiny = destiny.dirs.get(s[i]);
+            if (!renamed) destiny = destiny.dirs.get(s[i]);
             // System.out.println("New step: " + destiny.path);
         }
-        return destiny;
+        
+        return new Pair<>(destiny, newName);
     }
-    
+            
     private void updatePath(Node source) {
         // Para cada filho de source
-        
         for (Map.Entry<String, Node> n : source.dirs.entrySet()) {
             if (!(n.getKey().equals(".") || n.getKey().equals(".."))) {
                 n.getValue().path = source.path + "/" + n.getValue().name;
@@ -214,11 +225,11 @@ public class MyKernel implements Kernel {
                }
                else {
                     try {
-                    walker = this.getPathByName(args[0], 0);
-                }
-                catch (PathNotFoundException ex) {
-                    return ex.getMessage();
-                }
+                        walker = this.getNodeByPath(args[0], 0, false).getFirst();
+                    }
+                    catch (PathNotFoundException ex) {
+                        return ex.getMessage();
+                    }
                 }
             }
             else if (argc == 2) {
@@ -230,7 +241,7 @@ public class MyKernel implements Kernel {
                 }
                 
                 try {
-                    walker = this.getPathByName(args[1], 0);
+                    walker = this.getNodeByPath(args[1], 0, false).getFirst();
                 }
                 catch (PathNotFoundException ex) {
                     return ex.getMessage();
@@ -281,7 +292,7 @@ public class MyKernel implements Kernel {
             // Consider that the path is absolute by default
             Node walker;
             try {
-                walker = this.getPathByName(parameters, 1);
+                walker = this.getNodeByPath(parameters, 1, false).getFirst();
             }
             catch (PathNotFoundException ex) {
                 return ex.getMessage();
@@ -313,8 +324,7 @@ public class MyKernel implements Kernel {
         //fim da implementacao do aluno
         return result;
     }
-
-    // Need to be sharped!
+    
     @Override public String cd(String parameters) {
         //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
         if (parameters.equals("")) {
@@ -323,7 +333,7 @@ public class MyKernel implements Kernel {
         
         String result = "";
         try {
-            pwd = this.getPathByName(parameters, 0);
+            pwd = this.getNodeByPath(parameters, 0, false).getFirst();
         }
         catch (PathNotFoundException ex) {
             return ex.getMessage();
@@ -341,7 +351,7 @@ public class MyKernel implements Kernel {
         // Validações: Se o diretório deve estar vazio, então ele não pode ser parente
         // de pwd!
         if (parameters.equals("")) {
-            result = "The syntax of command is incorrect";
+            result = "rmdir: The syntax of command is incorrect";
         }
         else if (parameters.equals("..") || parameters.equals(".")) {
             result = "The directory can't be removed";
@@ -353,7 +363,7 @@ public class MyKernel implements Kernel {
             
             Node walker;
             try {
-                walker = this.getPathByName(parameters, 0);
+                walker = this.getNodeByPath(parameters, 0, false).getFirst();
             }
             catch (PathNotFoundException ex) {
                 return ex.getMessage();
@@ -376,15 +386,11 @@ public class MyKernel implements Kernel {
         return result;
     }
 
-    // Pode receber 3 parametros, mas não menos que 2!
-    // Origem e destino
-    // Flag -R para especificar a copia de um diretorio
-    
-    // Nao copia arquivo
+    // Pode renomear a cópia de um dir ou de um arquivo
     @Override public String cp(String parameters) {
         
         if (parameters.equals("")) {
-            return "The syntax of the command is incorrect.";
+            return "cp: The syntax of the command is incorrect.";
         }
         
         //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
@@ -411,30 +417,29 @@ public class MyKernel implements Kernel {
         int n1 = arg1.length;
         int n2 = arg2.length;
         
-        Node source, destiny;
+        Pair<Node, String> source, destiny;
         
         try {
-            source = this.getPathByName(args[start], 0);
-            destiny = this.getPathByName(args[start + 1], 0);
+            source = this.getNodeByPath(args[start], 0, false);
+            destiny = this.getNodeByPath(args[start + 1], 0, true);
         }
         catch (PathNotFoundException ex) {
             return ex.getMessage();
         }
         
-        if (dirCp && (source == destiny.father)) {
+        if (dirCp && (source.getFirst() == destiny.getFirst().father)) {
             return "Can't copy";
         }
         
         if (dirCp) {
-            // System.out.println("Destiny's name " + destiny.name);
-            Node cpDir = source.copyNode(destiny);
-            destiny.dirs.put(arg1[n1 - 1], cpDir);
-            destiny.dirs.put(".", destiny);
+            Node cpDir = source.getFirst().copyNode(destiny.getFirst());
+            cpDir.setName(destiny.getSecond());
+            destiny.getFirst().dirs.put(destiny.getSecond(), cpDir);
+            destiny.getFirst().dirs.put(".", destiny.getFirst());
         }
         else {
-            if (source.files.get(arg1[n1-1]) != null) {
-                System.out.println("File to copy: " + arg1[n1-1]);
-                myFile target = source.files.get(arg1[n1-1]);
+            if (source.getFirst().files.get(arg1[n1-1]) != null) {
+                myFile target = source.getFirst().files.get(arg1[n1-1]);
                 myFile cpFile = target.copyFile(target);
                 
                 String destinyFileName;
@@ -446,7 +451,7 @@ public class MyKernel implements Kernel {
                 } else {
                     destinyFileName = arg1[n1-1];
                 }
-                destiny.files.put(destinyFileName, cpFile);
+                destiny.getFirst().files.put(destinyFileName, cpFile);
             }
             else {
                 return "The system cannot find the path specified.";
@@ -459,6 +464,8 @@ public class MyKernel implements Kernel {
 
     @Override public String mv(String parameters)
     {
+        if (parameters.equals("")) 
+            return "mv: The syntax of command is incorrect";
         String result = "";
         //inicio da implementacao do aluno
         // Ir até o arquivo de origem e destino
@@ -498,7 +505,6 @@ public class MyKernel implements Kernel {
             destiny = pwd;
         }
         
-        // Podemos ter arquivos misturado com diretorios (Tratar)
         for (int i = s1; i < n1; i++)
         {
             if (arg1[i].contains(".txt")) {
@@ -535,9 +541,11 @@ public class MyKernel implements Kernel {
             if (!f2 && !rename) destiny = destiny.dirs.get(arg2[i]);
         }
         
-        System.out.println("new dir name: " + renameDir);
-        // Arrumar (. ..) | (.. .)
-        if (!f1 && (source == destiny.father || source == pwd)) {
+        System.out.println(source.name + " != " + pwd.path + " contains? " + this.isFather(source.name, destiny.path));
+        
+        
+        if ((this.isFather(source.name, destiny.path)||this.isFather(source.name, pwd.path))
+             && source != home) {
             return "Can't move";
         }
         
@@ -579,7 +587,7 @@ public class MyKernel implements Kernel {
         //inicio da implementacao do aluno
         // Hah algum parametro?
         if (parameters.length() == 0) {
-            return "The syntax of the command is incorrect.";
+            return "rm: The syntax of the command is incorrect.";
         }
         
         String args[] = this.countChar(parameters, ' ', true);
@@ -595,7 +603,7 @@ public class MyKernel implements Kernel {
             Node walker;
             
             try {
-                walker = this.getPathByName(args[0], 1);
+                walker = this.getNodeByPath(args[0], 1, false).getFirst();
             }
             catch (PathNotFoundException ex) {
                 return ex.getMessage();
@@ -618,7 +626,7 @@ public class MyKernel implements Kernel {
 
                 Node walker;
                 try {
-                    walker = this.getPathByName(args[1], 1);
+                    walker = this.getNodeByPath(args[1], 1, false).getFirst();
                 }
                 catch (PathNotFoundException ex) {
                     return ex.getMessage();
@@ -655,9 +663,8 @@ public class MyKernel implements Kernel {
         //variavel result deverah conter o que vai ser impresso na tela apos comando do usuário
         String result = "";
 
-        System.out.println("parametro chmod => " + parameters);
         if (parameters.equals("")) {
-            return "The syntax of the command is incorrect.";
+            return "chmod: The syntax of the command is incorrect.";
         }
         
         // Recebeu algum parametro
@@ -775,7 +782,7 @@ public class MyKernel implements Kernel {
 
         Node walker;
         try {
-            walker = this.getPathByName(str[0], 1);
+            walker = this.getNodeByPath(str[0], 1, false).getFirst();
         }
         catch (PathNotFoundException ex) {
             return ex.getMessage();
@@ -814,7 +821,7 @@ public class MyKernel implements Kernel {
         Node walker;
         
         try {
-           walker = this.getPathByName(parameters, 1);
+           walker = this.getNodeByPath(parameters, 1, false).getFirst();
         }
         catch (PathNotFoundException ex) {
             return ex.getMessage();
